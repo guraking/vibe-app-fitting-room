@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>가상 피팅룸</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body data-mode="ai">
+  <header class="top">
+    <div class="brand">
+      <span class="brand-mark">Fitting Room</span>
+      <span class="brand-sub">가상 피팅룸</span>
+    </div>
+    <div class="top-actions">
+      <div class="mode-switch" role="group" aria-label="피팅 방식">
+        <button type="button" class="mode-btn is-active" data-mode="ai" aria-pressed="true">정밀 · AI</button>
+        <button type="button" class="mode-btn" data-mode="quick" aria-pressed="false">간편 · 브라우저</button>
+      </div>
+      <button type="button" id="openSettings" class="ghost-btn">설정</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- 입력 패널 -->
+    <section class="panel" aria-label="입력">
+      <div class="drops">
+        <div class="drop-col">
+          <h2 class="step"><span class="step-no">01</span>전신 사진</h2>
+          <div class="drop" id="dropPerson" tabindex="0" role="button" aria-label="전신 사진 업로드">
+            <input type="file" id="filePerson" accept="image/*" hidden />
+            <img class="drop-preview" id="prevPerson" alt="업로드한 전신 사진" hidden />
+            <div class="drop-hint" id="hintPerson">
+              <strong>사진 선택</strong>
+              <span>클릭 · 드래그 · 붙여넣기</span>
+            </div>
+            <button type="button" class="drop-clear" id="clearPerson" aria-label="전신 사진 지우기" hidden>×</button>
+          </div>
+        </div>
+        <div class="drop-col">
+          <h2 class="step"><span class="step-no">02</span>입어볼 옷</h2>
+          <div class="drop" id="dropGarment" tabindex="0" role="button" aria-label="옷 이미지 업로드">
+            <input type="file" id="fileGarment" accept="image/*" hidden />
+            <img class="drop-preview" id="prevGarment" alt="업로드한 옷 이미지" hidden />
+            <div class="drop-hint" id="hintGarment">
+              <strong>옷 이미지 선택</strong>
+              <span>클릭 · 드래그 · 붙여넣기</span>
+            </div>
+            <button type="button" class="drop-clear" id="clearGarment" aria-label="옷 이미지 지우기" hidden>×</button>
+          </div>
+        </div>
+      </div>
+
+      <ul class="tips">
+        <li>머리부터 발끝까지 정면으로 서 있는 사진이 좋아요.</li>
+        <li>옷은 배경이 깔끔한 단독 상품 컷이 좋아요.</li>
+        <li>쇼핑몰 이미지 우클릭 → <b>이미지 복사</b> 후 이 페이지에서 <kbd>Ctrl</kbd>+<kbd>V</kbd></li>
+      </ul>
+
+      <div class="field">
+        <label for="urlInput">옷 이미지 주소 (선택)</label>
+        <div class="row">
+          <input type="url" id="urlInput" placeholder="https://…/상품이미지.jpg" />
+          <button type="button" id="urlBtn" class="ghost-btn">불러오기</button>
+        </div>
+      </div>
+
+      <fieldset class="field">
+        <legend>옷 종류</legend>
+        <div class="chips">
+          <label class="chip"><input type="radio" name="category" value="top" checked /><span>상의</span></label>
+          <label class="chip"><input type="radio" name="category" value="bottom" /><span>하의</span></label>
+          <label class="chip"><input type="radio" name="category" value="dress" /><span>원피스</span></label>
+        </div>
+      </fieldset>
+
+      <!-- AI 모드 전용 -->
+      <div class="field" data-only="ai">
+        <label for="garmentDesc">옷 설명 (영어 권장)</label>
+        <input type="text" id="garmentDesc" placeholder="예: short sleeve round neck t-shirt" />
+        <p class="hint">정밀 모드는 상의가 가장 정확해요.</p>
+      </div>
+
+      <div data-only="ai">
+        <button type="button" id="runBtn" class="cta" disabled>AI로 입혀보기</button>
+        <p class="hint">사진이 Hugging Face Space 서버로 전송돼요. 기기 밖으로 보내기 싫다면 간편 모드를 쓰세요.</p>
+        <div class="error-box" id="errorBox" hidden>
+          <p id="errorText"></p>
+          <button type="button" id="toQuick" class="ghost-btn">간편 모드로 전환</button>
+        </div>
+      </div>
+
+      <!-- 간편 모드 전용 -->
+      <div data-only="quick">
+        <p class="status" id="quickStatus">사진과 옷을 올리면 자동으로 배치돼요.</p>
+        <p class="hint">입고 있던 옷은 지워지지 않고 위에 겹쳐 보여요. 색감과 대략적인 핏을 보는 용도예요.</p>
+      </div>
+    </section>
+
+    <!-- 스테이지 -->
+    <section class="stage" aria-label="결과">
+      <div class="stage-bar">
+        <h2 class="step"><span class="step-no">03</span>결과</h2>
+        <div class="stage-tools">
+          <div class="seg" role="group" aria-label="보기 전환">
+            <button type="button" id="viewResult" class="seg-btn is-active" aria-pressed="true">결과</button>
+            <button type="button" id="viewOriginal" class="seg-btn" aria-pressed="false">원본</button>
+          </div>
+          <button type="button" id="zoomBtn" class="ghost-btn" disabled>확대</button>
+          <button type="button" id="saveHistory" class="ghost-btn" disabled>기록에 담기</button>
+          <button type="button" id="downloadBtn" class="ghost-btn" disabled>다운로드</button>
+        </div>
+      </div>
+
+      <div class="stage-view">
+        <div class="stage-empty" id="stageEmpty">
+          <p class="stage-empty-title">전신 사진을 올려주세요</p>
+          <p>옷을 입은 모습이 여기에 나타나요.</p>
+        </div>
+        <canvas id="stageCanvas" hidden title="클릭하면 크게 볼 수 있어요"></canvas>
+        <img id="stageImg" alt="피팅 결과" hidden title="클릭하면 크게 볼 수 있어요" />
+
+        <div class="busy" id="busy" hidden role="status" aria-live="polite">
+          <div class="spinner" aria-hidden="true"></div>
+          <p id="busyText">준비 중…</p>
+          <p class="busy-time" id="busyTime">0초</p>
+          <button type="button" id="cancelBtn" class="ghost-btn">취소</button>
+        </div>
+      </div>
+
+      <div class="quick-controls" id="quickControls" hidden>
+        <div class="ctrl"><label for="rngScale">크기</label><input type="range" id="rngScale" min="50" max="170" value="100" /><output id="outScale">100%</output></div>
+        <div class="ctrl"><label for="rngX">좌우</label><input type="range" id="rngX" min="-30" max="30" value="0" /><output id="outX">0</output></div>
+        <div class="ctrl"><label for="rngY">상하</label><input type="range" id="rngY" min="-30" max="30" value="0" /><output id="outY">0</output></div>
+        <div class="ctrl"><label for="rngRot">회전</label><input type="range" id="rngRot" min="-30" max="30" value="0" /><output id="outRot">0°</output></div>
+        <div class="ctrl"><label for="rngAlpha">불투명도</label><input type="range" id="rngAlpha" min="30" max="100" value="100" /><output id="outAlpha">100%</output></div>
+        <div class="ctrl"><label for="rngBg">배경 제거</label><input type="range" id="rngBg" min="5" max="80" value="30" /><output id="outBg">30</output></div>
+        <button type="button" id="resetAdj" class="ghost-btn">조정 초기화</button>
+      </div>
+
+      <div class="history">
+        <h3>기록</h3>
+        <p class="hint" id="historyEmpty">마음에 드는 결과를 "기록에 담기"로 모아 비교해 보세요.</p>
+        <div class="history-list" id="historyList"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 설정 -->
+  <dialog id="settingsDialog">
+    <form method="dialog" id="settingsForm">
+      <h2>정밀 모드 설정</h2>
+      <p class="hint">기본 Space(yisol/IDM-VTON)가 막히면 같은 입력 형식의 다른 Space 주소로 바꿔볼 수 있어요.</p>
+      <div class="field"><label for="setSpace">Space 주소</label><input type="text" id="setSpace" /></div>
+      <div class="field"><label for="setEndpoint">API 이름</label><input type="text" id="setEndpoint" /></div>
+      <div class="field">
+        <label for="setToken">Hugging Face 토큰 (선택)</label>
+        <input type="password" id="setToken" placeholder="hf_…" autocomplete="off" />
+        <p class="hint">넣으면 무료 사용량이 늘어요. 토큰은 이 브라우저에만 저장돼요.</p>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="setSteps">생성 단계 (20~40)</label><input type="number" id="setSteps" min="20" max="40" /></div>
+        <div class="field"><label for="setSeed">시드</label><input type="number" id="setSeed" /></div>
+      </div>
+      <label class="check"><input type="checkbox" id="setMask" /> 옷 영역 자동 마스크</label>
+      <label class="check"><input type="checkbox" id="setCrop" /> 자동 크롭/리사이즈</label>
+      <div class="dialog-actions">
+        <button type="button" id="resetSettings" class="ghost-btn">기본값</button>
+        <span class="spacer"></span>
+        <button type="button" id="closeSettings" class="ghost-btn">닫기</button>
+        <button type="submit" class="cta small">저장</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="lightbox">
+    <img id="lightboxImg" alt="확대한 이미지" />
+    <button type="button" id="closeLightbox" class="ghost-btn">닫기</button>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
